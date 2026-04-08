@@ -1,0 +1,192 @@
+---
+// Operator order list — SSR, requires session cookie.
+export const prerender = false;
+
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+
+// Read session cookie from incoming request
+const sessionCookie = Astro.cookies.get("session")?.value;
+if (!sessionCookie) {
+  return Astro.redirect("/operator/login");
+}
+
+// Fetch all orders from the API
+let orders: any[] = [];
+let fetchError = "";
+
+try {
+  const res = await fetch(`${API_URL}/v1/operator/orders?per_page=100`, {
+    headers: { Cookie: `session=${sessionCookie}` },
+  });
+
+  if (res.status === 401) {
+    return Astro.redirect("/operator/login");
+  }
+
+  if (!res.ok) {
+    fetchError = "Error al cargar órdenes.";
+  } else {
+    const data = await res.json();
+    orders = data.orders ?? [];
+  }
+} catch (e) {
+  fetchError = "Error de conexión con el servidor.";
+}
+
+// Group orders by status
+const statusOrder = [
+  "pending_confirmation",
+  "confirmed",
+  "purchasing",
+  "in_delivery",
+  "delivered",
+  "cancelled",
+  "failed",
+];
+
+const statusLabels: Record<string, string> = {
+  pending_confirmation: "Pendiente de confirmación",
+  confirmed: "Confirmado",
+  purchasing: "Comprando",
+  in_delivery: "En entrega",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+  failed: "Fallido",
+};
+
+const grouped: Record<string, any[]> = {};
+for (const status of statusOrder) {
+  grouped[status] = orders.filter((o) => o.status === status);
+}
+
+function formatCOP(v: number) {
+  return "$" + v.toLocaleString("es-CO");
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleString("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+const statusBadgeClass: Record<string, string> = {
+  pending_confirmation: "bg-amber-100 text-amber-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  purchasing: "bg-purple-100 text-purple-800",
+  in_delivery: "bg-cyan-100 text-cyan-800",
+  delivered: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-100 text-gray-600",
+  failed: "bg-red-100 text-red-800",
+};
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel de Operador — Protou</title>
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <header class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between">
+      <span class="text-xl font-bold">Protou — Operador</span>
+      <nav class="flex gap-4 text-sm">
+        <a href="/operator" class="hover:underline font-semibold">Órdenes</a>
+        <a href="/operator/couriers" class="hover:underline">Mensajeros</a>
+        <a href="/operator/delivery-config" class="hover:underline">Tarifas</a>
+        <button id="logout-btn" class="hover:underline text-red-200">Cerrar sesión</button>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-6">
+      <h1 class="text-2xl font-bold mb-6">Órdenes</h1>
+
+      {fetchError && (
+        <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{fetchError}</div>
+      )}
+
+      <!-- Status count tabs -->
+      <div class="flex gap-2 flex-wrap mb-6">
+        {statusOrder.map((status) => (
+          <a
+            href={`#${status}`}
+            class={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass[status]}`}
+          >
+            {statusLabels[status]} ({grouped[status].length})
+          </a>
+        ))}
+      </div>
+
+      {statusOrder.map((status) => (
+        grouped[status].length > 0 && (
+          <section id={status} class="mb-8">
+            <h2 class={`text-lg font-semibold mb-3 ${status === "pending_confirmation" ? "text-amber-700" : "text-gray-700"}`}>
+              {statusLabels[status]}
+              <span class="ml-2 text-sm font-normal text-gray-500">
+                ({grouped[status].length} {grouped[status].length === 1 ? "orden" : "órdenes"})
+              </span>
+            </h2>
+
+            <div class={`rounded-xl border overflow-hidden ${status === "pending_confirmation" ? "border-amber-300" : "border-gray-200"}`}>
+              <table class="w-full text-sm">
+                <thead class={`text-xs uppercase tracking-wide ${status === "pending_confirmation" ? "bg-amber-50" : "bg-gray-50"}`}>
+                  <tr>
+                    <th class="px-4 py-2 text-left">#ID</th>
+                    <th class="px-4 py-2 text-left">Estudiante</th>
+                    <th class="px-4 py-2 text-right">Total</th>
+                    <th class="px-4 py-2 text-left">Fecha</th>
+                    <th class="px-4 py-2 text-left">Estado</th>
+                    <th class="px-4 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  {grouped[status].map((order: any) => (
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-4 py-3 font-mono text-gray-500">#{order.id}</td>
+                      <td class="px-4 py-3">
+                        <div class="font-medium">{order.student_name}</div>
+                        <div class="text-xs text-gray-500">{order.student_email}</div>
+                      </td>
+                      <td class="px-4 py-3 text-right font-semibold">{formatCOP(order.total_cop)}</td>
+                      <td class="px-4 py-3 text-gray-500">{formatDate(order.created_at)}</td>
+                      <td class="px-4 py-3">
+                        <span class={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass[order.status]}`}>
+                          {statusLabels[order.status] ?? order.status}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        <a
+                          href={`/operator/orders/${order.id}`}
+                          class="text-indigo-600 hover:underline text-xs font-medium"
+                        >
+                          Ver detalle →
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )
+      ))}
+
+      {orders.length === 0 && !fetchError && (
+        <p class="text-gray-500 text-center py-12">No hay órdenes todavía.</p>
+      )}
+    </main>
+  </body>
+</html>
+
+<script define:vars={{ API_URL }}>
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    await fetch(`${API_URL}/v1/operator/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "/operator/login";
+  });
+</script>

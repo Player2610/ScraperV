@@ -1,0 +1,56 @@
+# ─── Go ──────────────────────────────────────────────────────────────────────
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/vendor/
+
+# Test output
+*.test
+*.out
+coverage.html
+coverage.txt
+
+# ─── Secrets — NUNCA commitear ───────────────────────────────────────────────
+.env
+.env.dev
+.env.local
+.env.*.local
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editores ────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── Frontend (web/) ─────────────────────────────────────────────────────────
+web/node_modules/
+web/dist/
+web/.astro/
+web/.wrangler/
+
+# web/.env se ignora como parte del patrón .env.* arriba,
+# pero web/.env.example SÍ se commitea (no contiene secrets)
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+.docker/
+
+# ─── Bases de datos / backups ────────────────────────────────────────────────
+*.sql.bak
+*.dump
+/tmp/
+
+# ─── Herramientas de desarrollo ──────────────────────────────────────────────
+# golangci-lint cache
+.golangci-lint/
+
+.atl/
+.claude/

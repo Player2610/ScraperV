@@ -1,0 +1,84 @@
+services:
+
+  # ─── Local database ───────────────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: protou
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d protou"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── One-shot: pull fresh copy from prod, restore to local ───────────────────
+  # Runs every time `docker compose up` is invoked.
+  # NEVER writes back to PROD_DATABASE_URL — direction is always prod → dev.
+  db-sync:
+    image: pgvector/pgvector:pg16
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.dev
+    environment:
+      # Use docker-internal hostname, not localhost
+      DATABASE_URL: postgres://postgres:password@db:5432/protou?sslmode=disable
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "==> [db-sync] Dumping from production..."
+        pg_dump \
+          --format=custom \
+          --no-acl \
+          --no-owner \
+          "$$PROD_DATABASE_URL" > /tmp/prod.dump
+        echo "==> [db-sync] Restoring to local dev DB..."
+        pg_restore \
+          --clean \
+          --if-exists \
+          --no-acl \
+          --no-owner \
+          --dbname "$$DATABASE_URL" \
+          /tmp/prod.dump
+        echo "==> [db-sync] Done."
+
+  # ─── One-shot: apply any migrations that are ahead of prod ───────────────────
+  migrate:
+    build:
+      context: .
+      target: migrate
+    restart: "no"
+    depends_on:
+      db-sync:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/protou?sslmode=disable
+
+  # ─── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env.dev
+    environment:
+      # Override to docker-internal hostname
+      DATABASE_URL: postgres://postgres:password@db:5432/protou?sslmode=disable
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

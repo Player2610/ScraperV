@@ -1,0 +1,42 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Componentes electrónicos para estudiantes en Bogotá" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} — Protou</title>
+  </head>
+  <body class="min-h-screen bg-white text-gray-900 antialiased">
+    <header class="border-b border-gray-200 px-4 py-3">
+      <nav class="mx-auto flex max-w-6xl items-center justify-between">
+        <a href="/" class="text-xl font-bold tracking-tight text-indigo-600">
+          Protou
+        </a>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="/search" class="text-gray-600 hover:text-gray-900">Catálogo</a>
+          <a href="/cart" class="text-gray-600 hover:text-gray-900">Carrito</a>
+          <a href="/login" class="text-gray-600 hover:text-gray-900">Ingresar</a>
+          <a href="/register" class="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">Registrarse</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8">
+      <slot />
+    </main>
+
+    <footer class="border-t border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
+      © {new Date().getFullYear()} Protou — Componentes electrónicos, entrega en Bogotá
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,92 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getCategories } from "@/lib/api";
+
+let categories: Awaited<ReturnType<typeof getCategories>>["categories"] = [];
+try {
+  const res = await getCategories();
+  // Show only top-level categories
+  categories = res.categories.filter((c) => c.parent_id === null).slice(0, 12);
+} catch {
+  // graceful degradation — categories grid will be empty at build time
+}
+---
+
+<Layout title="Inicio">
+  <!-- Hero -->
+  <section class="py-16 text-center">
+    <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+      Componentes electrónicos<br />
+      <span class="text-indigo-600">entregados en Bogotá</span>
+    </h1>
+    <p class="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
+      Resistencias, sensores, Arduinos y más — buscamos en varias tiendas y te
+      los llevamos. Sin intermediarios complicados.
+    </p>
+
+    <!-- Search box -->
+    <form
+      method="get"
+      action="/search"
+      class="mt-10 flex items-center justify-center gap-2 max-w-xl mx-auto"
+    >
+      <input
+        type="text"
+        name="q"
+        placeholder="Busca resistencias, ESP32, sensores..."
+        class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      />
+      <button
+        type="submit"
+        class="rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap"
+      >
+        Buscar
+      </button>
+    </form>
+  </section>
+
+  <!-- Value propositions -->
+  <section class="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm">
+      <div class="text-3xl">&#128722;</div>
+      <h3 class="mt-3 font-semibold text-gray-900">Varias tiendas</h3>
+      <p class="mt-2 text-sm text-gray-600">
+        Comparamos precios entre múltiples tiendas físicas de Bogotá en un solo
+        lugar.
+      </p>
+    </div>
+    <div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm">
+      <div class="text-3xl">&#128666;</div>
+      <h3 class="mt-3 font-semibold text-gray-900">Entrega el mismo día</h3>
+      <p class="mt-2 text-sm text-gray-600">
+        Compramos el componente y te lo llevamos a tu universidad o residencia.
+      </p>
+    </div>
+    <div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm">
+      <div class="text-3xl">&#128180;</div>
+      <h3 class="mt-3 font-semibold text-gray-900">Pago contra entrega</h3>
+      <p class="mt-2 text-sm text-gray-600">
+        Nequi, Daviplata o efectivo. Sin necesidad de tarjeta de crédito.
+      </p>
+    </div>
+  </section>
+
+  <!-- Category grid -->
+  {
+    categories.length > 0 && (
+      <section class="mt-16">
+        <h2 class="text-2xl font-bold text-gray-900">Explorar por categoría</h2>
+        <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {categories.map((cat) => (
+            <a
+              href={`/categories/${cat.slug}`}
+              class="flex items-center justify-center rounded-xl border border-gray-200 p-5 text-center text-sm font-medium text-gray-700 shadow-sm transition hover:border-indigo-400 hover:text-indigo-600 hover:shadow"
+            >
+              {cat.name}
+            </a>
+          ))}
+        </div>
+      </section>
+    )
+  }
+</Layout>

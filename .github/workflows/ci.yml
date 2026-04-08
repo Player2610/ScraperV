@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: ./...
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: protou_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:password@localhost:5432/protou_test?sslmode=disable
+      JWT_SECRET: test-secret-that-is-at-least-32-chars-long
+      RESEND_API_KEY: re_test_key
+      GOOGLE_MAPS_API_KEY: test_maps_key
+      TEST_DATABASE_URL: postgres://postgres:password@localhost:5432/protou_test?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Run unit tests
+        run: go test -race -timeout 120s ./...
+
+      - name: Run integration tests
+        run: go test -tags integration -race -timeout 120s ./internal/scraping/...
+
+  build-check:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    # Solo en PRs — en main los deploy jobs hacen el build real
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build api image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build scraper image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: scraper
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build migrate image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: migrate
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

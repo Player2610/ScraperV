@@ -1,0 +1,75 @@
+name: Deploy Scraper
+
+on:
+  push:
+    branches: [main]
+    # Opcional: solo deployar si cambiaron archivos del scraper
+    # paths:
+    #   - 'internal/scraping/**'
+    #   - 'cmd/scraper/**'
+    #   - 'db/migrations/**'
+
+concurrency:
+  group: deploy-scraper
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & deploy scraper job
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.GCP_REGION }}
+      IMAGE: us-${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/protou/scraper
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push scraper image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: scraper
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Actualiza el Cloud Run Job con la nueva imagen
+      # El scheduler seguirá disparando en el mismo horario (2am COT)
+      - name: Update Cloud Run Job
+        run: |
+          gcloud run jobs update protou-scraper \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --quiet
+
+      - name: Print deploy summary
+        run: |
+          echo "✅ Scraper job updated to ${{ github.sha }}"
+          echo "⏰ Next scheduled run: 02:00 COT (07:00 UTC)"
+          echo ""
+          echo "To trigger manually:"
+          echo "  gcloud run jobs execute protou-scraper --region ${{ env.REGION }}"

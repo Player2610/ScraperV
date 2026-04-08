@@ -1,0 +1,44 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - godot
+    - misspell
+    - unconvert
+    - unparam
+    - noctx
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - exportloopref
+    - gosimple
+    - ineffassign
+    - typecheck
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  govet:
+    enable-all: true
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/protou/protou
+
+issues:
+  exclude-rules:
+    # Allow unused parameters in main packages
+    - path: cmd/
+      linters:
+        - unparam
+  max-issues-per-linter: 50
+  max-same-issues: 10

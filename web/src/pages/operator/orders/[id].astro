@@ -1,0 +1,490 @@
+---
+// Operator order detail — SSR, requires session cookie.
+export const prerender = false;
+
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+
+const sessionCookie = Astro.cookies.get("session")?.value;
+if (!sessionCookie) {
+  return Astro.redirect("/operator/login");
+}
+
+const { id } = Astro.params;
+
+let order: any = null;
+let items: any[] = [];
+let events: any[] = [];
+let delivery: any = null;
+let couriers: any[] = [];
+let fetchError = "";
+
+try {
+  const [orderRes, couriersRes] = await Promise.all([
+    fetch(`${API_URL}/v1/operator/orders/${id}`, {
+      headers: { Cookie: `session=${sessionCookie}` },
+    }),
+    fetch(`${API_URL}/v1/operator/couriers`, {
+      headers: { Cookie: `session=${sessionCookie}` },
+    }),
+  ]);
+
+  if (orderRes.status === 401) {
+    return Astro.redirect("/operator/login");
+  }
+
+  if (orderRes.status === 404) {
+    return new Response("Orden no encontrada", { status: 404 });
+  }
+
+  if (!orderRes.ok) {
+    fetchError = "Error al cargar la orden.";
+  } else {
+    const data = await orderRes.json();
+    order = data.order;
+    items = data.items ?? [];
+    events = data.events ?? [];
+    delivery = data.delivery ?? null;
+  }
+
+  if (couriersRes.ok) {
+    const cd = await couriersRes.json();
+    couriers = cd.couriers ?? [];
+  }
+} catch (e) {
+  fetchError = "Error de conexión con el servidor.";
+}
+
+// Valid next transitions for each status
+const transitions: Record<string, string[]> = {
+  pending_confirmation: ["confirmed", "cancelled", "failed"],
+  confirmed: ["purchasing", "cancelled", "failed"],
+  purchasing: ["in_delivery", "cancelled", "failed"],
+  in_delivery: ["delivered", "failed"],
+  delivered: [],
+  cancelled: [],
+  failed: [],
+};
+
+const statusLabels: Record<string, string> = {
+  pending_confirmation: "Pendiente de confirmación",
+  confirmed: "Confirmado",
+  purchasing: "Comprando",
+  in_delivery: "En entrega",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+  failed: "Fallido",
+};
+
+const statusBadgeClass: Record<string, string> = {
+  pending_confirmation: "bg-amber-100 text-amber-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  purchasing: "bg-purple-100 text-purple-800",
+  in_delivery: "bg-cyan-100 text-cyan-800",
+  delivered: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-100 text-gray-600",
+  failed: "bg-red-100 text-red-800",
+};
+
+function formatCOP(v: number) {
+  return "$" + v.toLocaleString("es-CO");
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleString("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+const nextStates = order ? (transitions[order.status] ?? []) : [];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orden #{id} — Protou Operador</title>
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <header class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between">
+      <span class="text-xl font-bold">Protou — Operador</span>
+      <nav class="flex gap-4 text-sm">
+        <a href="/operator" class="hover:underline">← Órdenes</a>
+        <a href="/operator/couriers" class="hover:underline">Mensajeros</a>
+        <a href="/operator/delivery-config" class="hover:underline">Tarifas</a>
+        <button id="logout-btn" class="hover:underline text-red-200">Cerrar sesión</button>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      {fetchError && (
+        <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{fetchError}</div>
+      )}
+
+      {order && (
+        <>
+          <!-- Order header -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="flex flex-wrap gap-4 items-start justify-between">
+              <div>
+                <h1 class="text-2xl font-bold">Orden #{order.id}</h1>
+                <p class="text-sm text-gray-500 mt-1">Creado: {formatDate(order.created_at)}</p>
+              </div>
+              <span class={`rounded-full px-3 py-1 text-sm font-semibold ${statusBadgeClass[order.status]}`}>
+                {statusLabels[order.status] ?? order.status}
+              </span>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p class="text-gray-500">Estudiante</p>
+                <p class="font-medium">{order.student_name}</p>
+                <p class="text-xs text-gray-500">{order.student_email}</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Subtotal</p>
+                <p class="font-medium">{formatCOP(order.subtotal_cop)}</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Domicilio</p>
+                <p class="font-medium">{formatCOP(order.delivery_fee_cop)}</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Total</p>
+                <p class="font-bold text-lg">{formatCOP(order.total_cop)}</p>
+              </div>
+            </div>
+
+            {order.delivery_address && (
+              <div class="mt-4 text-sm">
+                <p class="text-gray-500">Dirección de entrega</p>
+                <p class="font-medium">{order.delivery_address?.full_address ?? "—"}</p>
+              </div>
+            )}
+          </div>
+
+          <!-- Items table -->
+          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-5 py-3 border-b border-gray-100">
+              <h2 class="font-semibold text-gray-700">Ítems del pedido</h2>
+            </div>
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-2 text-left">Producto</th>
+                  <th class="px-4 py-2 text-left">Tienda</th>
+                  <th class="px-4 py-2 text-right">Precio</th>
+                  <th class="px-4 py-2 text-right">Qty</th>
+                  <th class="px-4 py-2 text-right">Subtotal</th>
+                  <th class="px-4 py-2 text-center">Estado</th>
+                  <th class="px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                {items.map((item: any) => (
+                  <tr class={item.is_cancelled ? "opacity-50 line-through" : ""}>
+                    <td class="px-4 py-3">{item.listing_name_snapshot}</td>
+                    <td class="px-4 py-3 text-gray-500">{item.listing_store_snapshot}</td>
+                    <td class="px-4 py-3 text-right">{formatCOP(item.price_snapshot_cop)}</td>
+                    <td class="px-4 py-3 text-right">{item.quantity}</td>
+                    <td class="px-4 py-3 text-right font-medium">{formatCOP(item.price_snapshot_cop * item.quantity)}</td>
+                    <td class="px-4 py-3 text-center">
+                      {item.is_cancelled ? (
+                        <span class="rounded-full bg-gray-100 text-gray-500 px-2 py-0.5 text-xs">Cancelado</span>
+                      ) : (
+                        <span class="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Activo</span>
+                      )}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      {!item.is_cancelled && (
+                        <button
+                          class="cancel-item-btn text-xs text-red-600 hover:underline"
+                          data-item-id={item.id}
+                          data-order-id={order.id}
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Events timeline -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 class="font-semibold text-gray-700 mb-4">Historial de eventos</h2>
+            {events.length === 0 ? (
+              <p class="text-gray-500 text-sm">Sin eventos todavía.</p>
+            ) : (
+              <ol class="relative border-l border-gray-200 ml-3 space-y-4">
+                {events.map((ev: any) => (
+                  <li class="ml-4">
+                    <div class="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-gray-300"></div>
+                    <p class="text-xs text-gray-500">{formatDate(ev.created_at)}</p>
+                    <p class="text-sm font-medium">
+                      {ev.from_status ? `${statusLabels[ev.from_status] ?? ev.from_status} →` : ""}
+                      {statusLabels[ev.to_status] ?? ev.to_status}
+                    </p>
+                    {ev.note && <p class="text-xs text-gray-500">{ev.note}</p>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <!-- Action panel -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
+            <h2 class="font-semibold text-gray-700">Acciones</h2>
+
+            <!-- Quick confirm button -->
+            {order.status === "pending_confirmation" && (
+              <div>
+                <button
+                  id="confirm-btn"
+                  data-order-id={order.id}
+                  class="rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                >
+                  Confirmar orden
+                </button>
+              </div>
+            )}
+
+            <!-- Transition selector -->
+            {nextStates.length > 0 && (
+              <div class="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Cambiar estado a</label>
+                  <select
+                    id="transition-select"
+                    class="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">— seleccionar —</option>
+                    {nextStates.map((s) => (
+                      <option value={s}>{statusLabels[s] ?? s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Nota (opcional)</label>
+                  <input
+                    id="transition-note"
+                    type="text"
+                    placeholder="Ej: comprado en MercaElec"
+                    class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-56"
+                  />
+                </div>
+                <button
+                  id="transition-btn"
+                  data-order-id={order.id}
+                  class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  Aplicar
+                </button>
+              </div>
+            )}
+
+            <!-- Override delivery fee -->
+            <div class="flex flex-wrap gap-3 items-end border-t border-gray-100 pt-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Overridear tarifa de domicilio (COP)</label>
+                <input
+                  id="fee-input"
+                  type="number"
+                  min="0"
+                  value={order.delivery_fee_cop}
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-36"
+                />
+              </div>
+              <button
+                id="fee-btn"
+                data-order-id={order.id}
+                class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+              >
+                Guardar tarifa
+              </button>
+            </div>
+
+            <!-- Assign courier -->
+            {(order.status === "purchasing" || order.status === "in_delivery") && couriers.length > 0 && (
+              <div class="flex flex-wrap gap-3 items-end border-t border-gray-100 pt-4">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Asignar mensajero</label>
+                  <select
+                    id="courier-select"
+                    class="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">— seleccionar —</option>
+                    {couriers.map((c: any) => (
+                      <option value={c.id} selected={delivery?.courier_id === c.id}>{c.name} ({c.phone})</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  id="assign-courier-btn"
+                  data-order-id={order.id}
+                  class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
+                >
+                  Asignar
+                </button>
+              </div>
+            )}
+          </div>
+
+          <!-- Delivery info -->
+          {delivery && (
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+              <h2 class="font-semibold text-gray-700 mb-3">Información de entrega</h2>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p class="text-gray-500">Mensajero</p>
+                  <p class="font-medium">{delivery.courier_name ?? "—"}</p>
+                  <p class="text-xs text-gray-500">{delivery.courier_phone ?? ""}</p>
+                </div>
+                <div>
+                  <p class="text-gray-500">Asignado</p>
+                  <p class="font-medium">{delivery.assigned_at ? formatDate(delivery.assigned_at) : "—"}</p>
+                </div>
+                <div>
+                  <p class="text-gray-500">Entregado</p>
+                  <p class="font-medium">{delivery.delivered_at ? formatDate(delivery.delivered_at) : "—"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <!-- Status message -->
+      <div id="status-msg" class="hidden rounded-md px-4 py-3 text-sm"></div>
+    </main>
+  </body>
+</html>
+
+<script define:vars={{ API_URL }}>
+  const orderId = document.querySelector("[data-order-id]")?.dataset.orderId;
+
+  function showMsg(msg, isError = false) {
+    const el = document.getElementById("status-msg");
+    el.textContent = msg;
+    el.className = `rounded-md px-4 py-3 text-sm ${isError ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 4000);
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+    return res;
+  }
+
+  async function apiPut(path, body) {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+    return res;
+  }
+
+  // Confirm order
+  document.getElementById("confirm-btn")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const res = await apiPost(`/v1/operator/orders/${orderId}/confirm`, {});
+    if (res.ok) {
+      showMsg("Orden confirmada. Recargando...");
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json();
+      showMsg(d.error ?? "Error al confirmar", true);
+      btn.disabled = false;
+    }
+  });
+
+  // Transition
+  document.getElementById("transition-btn")?.addEventListener("click", async (e) => {
+    const toStatus = document.getElementById("transition-select")?.value;
+    const note = document.getElementById("transition-note")?.value;
+    if (!toStatus) { showMsg("Selecciona un estado", true); return; }
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const res = await apiPost(`/v1/operator/orders/${orderId}/transition`, { to: toStatus, note: note || undefined });
+    if (res.ok) {
+      showMsg(`Estado cambiado a ${toStatus}. Recargando...`);
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json();
+      showMsg(d.error ?? "Error en transición", true);
+      btn.disabled = false;
+    }
+  });
+
+  // Cancel item
+  document.querySelectorAll(".cancel-item-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const itemId = e.currentTarget.dataset.itemId;
+      const reason = prompt("Razón de cancelación (opcional):");
+      if (reason === null) return; // cancelled
+      e.currentTarget.disabled = true;
+      const res = await apiPost(`/v1/operator/orders/${orderId}/items/${itemId}/cancel`, { reason });
+      if (res.ok) {
+        showMsg("Ítem cancelado. Recargando...");
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        const d = await res.json();
+        showMsg(d.error ?? "Error al cancelar ítem", true);
+        e.currentTarget.disabled = false;
+      }
+    });
+  });
+
+  // Override delivery fee
+  document.getElementById("fee-btn")?.addEventListener("click", async (e) => {
+    const feeCop = parseInt(document.getElementById("fee-input")?.value ?? "0", 10);
+    if (isNaN(feeCop) || feeCop < 0) { showMsg("Tarifa inválida", true); return; }
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const res = await apiPut(`/v1/operator/orders/${orderId}/delivery-fee`, { fee_cop: feeCop });
+    if (res.ok) {
+      showMsg("Tarifa actualizada. Recargando...");
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json();
+      showMsg(d.error ?? "Error al actualizar tarifa", true);
+      btn.disabled = false;
+    }
+  });
+
+  // Assign courier
+  document.getElementById("assign-courier-btn")?.addEventListener("click", async (e) => {
+    const courierId = parseInt(document.getElementById("courier-select")?.value ?? "0", 10);
+    if (!courierId) { showMsg("Selecciona un mensajero", true); return; }
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const res = await apiPost(`/v1/operator/orders/${orderId}/assign-courier`, { courier_id: courierId });
+    if (res.ok) {
+      showMsg("Mensajero asignado. Recargando...");
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json();
+      showMsg(d.error ?? "Error al asignar mensajero", true);
+      btn.disabled = false;
+    }
+  });
+
+  // Logout
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    await fetch(`${API_URL}/v1/operator/auth/logout`, { method: "POST", credentials: "include" });
+    window.location.href = "/operator/login";
+  });
+</script>

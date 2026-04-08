@@ -1,0 +1,261 @@
+---
+// Operator couriers page — SSR, requires session cookie.
+export const prerender = false;
+
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+
+const sessionCookie = Astro.cookies.get("session")?.value;
+if (!sessionCookie) {
+  return Astro.redirect("/operator/login");
+}
+
+let couriers: any[] = [];
+let fetchError = "";
+
+try {
+  const res = await fetch(`${API_URL}/v1/operator/couriers?all=true`, {
+    headers: { Cookie: `session=${sessionCookie}` },
+  });
+
+  if (res.status === 401) {
+    return Astro.redirect("/operator/login");
+  }
+
+  if (!res.ok) {
+    fetchError = "Error al cargar mensajeros.";
+  } else {
+    const data = await res.json();
+    couriers = data.couriers ?? [];
+  }
+} catch (e) {
+  fetchError = "Error de conexión con el servidor.";
+}
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mensajeros — Protou Operador</title>
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <header class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between">
+      <span class="text-xl font-bold">Protou — Operador</span>
+      <nav class="flex gap-4 text-sm">
+        <a href="/operator" class="hover:underline">Órdenes</a>
+        <a href="/operator/couriers" class="hover:underline font-semibold">Mensajeros</a>
+        <a href="/operator/delivery-config" class="hover:underline">Tarifas</a>
+        <button id="logout-btn" class="hover:underline text-red-200">Cerrar sesión</button>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-4xl px-4 py-6">
+      <h1 class="text-2xl font-bold mb-6">Mensajeros</h1>
+
+      {fetchError && (
+        <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{fetchError}</div>
+      )}
+
+      <!-- Couriers table -->
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-4 py-2 text-left">Nombre</th>
+              <th class="px-4 py-2 text-left">Teléfono</th>
+              <th class="px-4 py-2 text-center">Estado</th>
+              <th class="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100" id="couriers-table-body">
+            {couriers.map((c: any) => (
+              <tr id={`courier-row-${c.id}`}>
+                <td class="px-4 py-3 font-medium">{c.name}</td>
+                <td class="px-4 py-3 text-gray-500">{c.phone}</td>
+                <td class="px-4 py-3 text-center">
+                  <button
+                    class="toggle-active-btn rounded-full px-3 py-0.5 text-xs font-medium cursor-pointer"
+                    class:list={[c.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"]}
+                    data-courier-id={c.id}
+                    data-is-active={c.is_active ? "true" : "false"}
+                  >
+                    {c.is_active ? "Activo" : "Inactivo"}
+                  </button>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button
+                    class="edit-courier-btn text-xs text-indigo-600 hover:underline"
+                    data-courier-id={c.id}
+                    data-name={c.name}
+                    data-phone={c.phone}
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {couriers.length === 0 && (
+              <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay mensajeros registrados.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add courier form -->
+      <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 class="font-semibold text-gray-700 mb-4">Agregar mensajero</h2>
+        <form id="add-courier-form" class="flex flex-wrap gap-3 items-end">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Nombre</label>
+            <input
+              id="new-name"
+              type="text"
+              required
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-48"
+              placeholder="Carlos Martínez"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Teléfono</label>
+            <input
+              id="new-phone"
+              type="text"
+              required
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-40"
+              placeholder="3001234567"
+            />
+          </div>
+          <button
+            type="submit"
+            id="add-courier-btn"
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            Agregar
+          </button>
+        </form>
+        <p id="form-msg" class="hidden mt-3 text-sm"></p>
+      </div>
+
+      <!-- Edit modal (simple inline form) -->
+      <div id="edit-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-80">
+          <h3 class="font-semibold text-lg mb-4">Editar mensajero</h3>
+          <input type="hidden" id="edit-id" />
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Nombre</label>
+              <input id="edit-name" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Teléfono</label>
+              <input id="edit-phone" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div class="flex gap-2 mt-5">
+            <button id="edit-save-btn" class="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Guardar</button>
+            <button id="edit-cancel-btn" class="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
+          </div>
+          <p id="edit-msg" class="hidden mt-3 text-sm text-red-600"></p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
+
+<script define:vars={{ API_URL }}>
+  function showFormMsg(msg, isError = false) {
+    const el = document.getElementById("form-msg");
+    el.textContent = msg;
+    el.className = `mt-3 text-sm ${isError ? "text-red-600" : "text-green-700"}`;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 3000);
+  }
+
+  // Add courier
+  document.getElementById("add-courier-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("new-name").value.trim();
+    const phone = document.getElementById("new-phone").value.trim();
+    if (!name || !phone) { showFormMsg("Nombre y teléfono son requeridos.", true); return; }
+
+    const btn = document.getElementById("add-courier-btn");
+    btn.disabled = true;
+
+    const res = await fetch(`${API_URL}/v1/operator/couriers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name, phone }),
+    });
+
+    if (res.ok) {
+      showFormMsg("Mensajero agregado. Recargando...");
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json();
+      showFormMsg(d.error ?? "Error al agregar mensajero.", true);
+      btn.disabled = false;
+    }
+  });
+
+  // Toggle active
+  document.querySelectorAll(".toggle-active-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const courierId = e.currentTarget.dataset.courierId;
+      const isActive = e.currentTarget.dataset.isActive === "true";
+      const res = await fetch(`${API_URL}/v1/operator/couriers/${courierId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: !isActive }),
+      });
+      if (res.ok) { location.reload(); }
+    });
+  });
+
+  // Edit modal
+  document.querySelectorAll(".edit-courier-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const { courierId, name, phone } = e.currentTarget.dataset;
+      document.getElementById("edit-id").value = courierId;
+      document.getElementById("edit-name").value = name;
+      document.getElementById("edit-phone").value = phone;
+      document.getElementById("edit-modal").classList.remove("hidden");
+    });
+  });
+
+  document.getElementById("edit-cancel-btn")?.addEventListener("click", () => {
+    document.getElementById("edit-modal").classList.add("hidden");
+  });
+
+  document.getElementById("edit-save-btn")?.addEventListener("click", async () => {
+    const id = document.getElementById("edit-id").value;
+    const name = document.getElementById("edit-name").value.trim();
+    const phone = document.getElementById("edit-phone").value.trim();
+    const res = await fetch(`${API_URL}/v1/operator/couriers/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name, phone }),
+    });
+    if (res.ok) {
+      document.getElementById("edit-modal").classList.add("hidden");
+      location.reload();
+    } else {
+      const d = await res.json();
+      const el = document.getElementById("edit-msg");
+      el.textContent = d.error ?? "Error al guardar.";
+      el.classList.remove("hidden");
+    }
+  });
+
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    await fetch(`${API_URL}/v1/operator/auth/logout`, { method: "POST", credentials: "include" });
+    window.location.href = "/operator/login";
+  });
+</script>

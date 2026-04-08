@@ -1,0 +1,230 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+---
+
+<Layout title="Crear cuenta">
+  <div class="mx-auto max-w-md">
+    <h1 class="text-2xl font-bold text-gray-900">Crear cuenta</h1>
+    <p class="mt-2 text-sm text-gray-600">
+      ¿Ya tienes cuenta?{" "}
+      <a href="/login" class="text-indigo-600 hover:underline">Iniciar sesión</a>
+    </p>
+
+    <form id="register-form" class="mt-8 space-y-5" novalidate>
+      <!-- Full name -->
+      <div>
+        <label for="full_name" class="block text-sm font-medium text-gray-700">
+          Nombre completo
+        </label>
+        <input
+          id="full_name"
+          name="full_name"
+          type="text"
+          autocomplete="name"
+          required
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+        <p id="full_name-error" class="mt-1 hidden text-xs text-red-600"></p>
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">
+          Correo electrónico
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+        <p id="email-error" class="mt-1 hidden text-xs text-red-600"></p>
+      </div>
+
+      <!-- Phone -->
+      <div>
+        <label for="phone" class="block text-sm font-medium text-gray-700">
+          Teléfono <span class="text-gray-400">(opcional)</span>
+        </label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          autocomplete="tel"
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">
+          Contraseña
+        </label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="8"
+          class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+        <p id="password-error" class="mt-1 hidden text-xs text-red-600"></p>
+      </div>
+
+      <!-- HABEAS DATA consent -->
+      <div class="flex items-start gap-3">
+        <input
+          id="habeas_data"
+          name="habeas_data"
+          type="checkbox"
+          required
+          class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        />
+        <label for="habeas_data" class="text-sm text-gray-600">
+          Autorizo el tratamiento de mis datos personales conforme a la
+          <a href="/privacidad" class="text-indigo-600 hover:underline" target="_blank">
+            Política de Privacidad
+          </a>{" "}
+          y la Ley 1581 de 2012 (HABEAS DATA).
+          <span class="text-red-500"> *</span>
+        </label>
+      </div>
+      <p id="habeas-error" class="hidden text-xs text-red-600">
+        Debes aceptar el tratamiento de datos para continuar.
+      </p>
+
+      <!-- Global error -->
+      <p id="form-error" class="hidden rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+
+      <button
+        type="submit"
+        id="submit-btn"
+        class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60"
+      >
+        Crear cuenta
+      </button>
+    </form>
+  </div>
+</Layout>
+
+<script define:vars={{ API_URL }}>
+  const form = document.getElementById("register-form");
+  const submitBtn = document.getElementById("submit-btn");
+  const formError = document.getElementById("form-error");
+
+  function showFieldError(fieldId, message) {
+    const el = document.getElementById(fieldId + "-error");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove("hidden");
+    document.getElementById(fieldId)?.classList.add("border-red-500");
+  }
+
+  function clearFieldError(fieldId) {
+    const el = document.getElementById(fieldId + "-error");
+    if (!el) return;
+    el.textContent = "";
+    el.classList.add("hidden");
+    document.getElementById(fieldId)?.classList.remove("border-red-500");
+  }
+
+  function clearErrors() {
+    ["full_name", "email", "password"].forEach(clearFieldError);
+    document.getElementById("habeas-error")?.classList.add("hidden");
+    formError.textContent = "";
+    formError.classList.add("hidden");
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const fullName = form.full_name.value.trim();
+    const email = form.email.value.trim();
+    const phone = form.phone.value.trim();
+    const password = form.password.value;
+    const habeas = form.habeas_data.checked;
+
+    let valid = true;
+
+    if (!fullName) {
+      showFieldError("full_name", "El nombre es requerido.");
+      valid = false;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showFieldError("email", "Ingresa un correo electrónico válido.");
+      valid = false;
+    }
+    if (password.length < 8) {
+      showFieldError("password", "La contraseña debe tener al menos 8 caracteres.");
+      valid = false;
+    }
+    if (!habeas) {
+      document.getElementById("habeas-error")?.classList.remove("hidden");
+      valid = false;
+    }
+
+    if (!valid) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creando cuenta...";
+
+    try {
+      const body = { email, full_name: fullName, password, habeas_data_consent: habeas };
+      if (phone) body.phone = phone;
+
+      const res = await fetch(`${API_URL}/v1/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          showFieldError("email", "Este correo ya está registrado.");
+        } else {
+          formError.textContent = data.error ?? "Error al crear la cuenta. Intenta de nuevo.";
+          formError.classList.remove("hidden");
+        }
+        return;
+      }
+
+      localStorage.setItem("protou_token", data.token);
+      localStorage.setItem("protou_user", JSON.stringify(data.user));
+
+      // Migrate guest cart if any
+      const guestCart = localStorage.getItem("protou_guest_cart");
+      if (guestCart) {
+        try {
+          const items = JSON.parse(guestCart);
+          await fetch(`${API_URL}/v1/cart/migrate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${data.token}`,
+            },
+            body: JSON.stringify({ items }),
+          });
+          localStorage.removeItem("protou_guest_cart");
+        } catch {}
+      }
+
+      window.location.href = "/cart";
+    } catch (err) {
+      formError.textContent = "Error de red. Intenta de nuevo.";
+      formError.classList.remove("hidden");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Crear cuenta";
+    }
+  });
+</script>

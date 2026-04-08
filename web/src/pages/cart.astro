@@ -1,0 +1,403 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+/**
+ * Cart page — SSR.
+ * Reads JWT from Authorization cookie (set by client-side JS) or falls back
+ * to rendering the unauthenticated state and redirecting client-side.
+ */
+
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+
+// Try to read cart server-side using cookie token
+const cookieToken = Astro.cookies.get("protou_token")?.value ?? "";
+
+interface CartItem {
+  id: number;
+  cart_id: number;
+  listing_id: number;
+  quantity: number;
+  listing: {
+    id: number;
+    name: string;
+    price_cop: number | null;
+    image_url: string | null;
+    stock_signal: string;
+    store: { name: string };
+  } | null;
+  unavailable: boolean;
+}
+
+interface CartData {
+  cart: { id: number; user_id: number } | null;
+  items: CartItem[];
+}
+
+let cartData: CartData | null = null;
+let serverError = false;
+
+if (cookieToken) {
+  try {
+    const res = await fetch(`${API_URL}/v1/cart`, {
+      headers: { Authorization: `Bearer ${cookieToken}` },
+    });
+    if (res.ok) {
+      cartData = await res.json();
+    } else if (res.status === 401) {
+      return Astro.redirect("/login?redirect=/cart");
+    }
+  } catch {
+    serverError = true;
+  }
+}
+---
+
+<Layout title="Tu carrito">
+  <div id="cart-container" class="mx-auto max-w-3xl">
+    <!-- Loading state (shown when no SSR data and need client JS) -->
+    <div id="loading-state" class={cartData !== null || !cookieToken ? "hidden" : ""}>
+      <p class="text-gray-500">Cargando tu carrito...</p>
+    </div>
+
+    <!-- Unauthenticated: client JS will redirect or show -->
+    <div id="unauth-state" class="hidden">
+      <p class="text-gray-600">
+        Debes{" "}
+        <a href="/login?redirect=/cart" class="text-indigo-600 hover:underline">
+          iniciar sesión
+        </a>{" "}
+        para ver tu carrito.
+      </p>
+    </div>
+
+    <!-- Cart UI -->
+    <div id="cart-ui" class={!cartData && !cookieToken ? "hidden" : ""}>
+      <h1 class="text-2xl font-bold text-gray-900">Tu carrito</h1>
+
+      <!-- Empty state -->
+      <div id="empty-state" class={cartData && cartData.items?.length === 0 ? "" : "hidden"}>
+        <p class="mt-8 text-gray-500 text-center text-lg">Tu carrito está vacío.</p>
+        <div class="mt-4 text-center">
+          <a
+            href="/search"
+            class="inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            Explorar catálogo
+          </a>
+        </div>
+      </div>
+
+      <!-- Items list -->
+      <div id="items-container" class="mt-6 space-y-4">
+        {
+          cartData?.items?.map((item) => (
+            <div
+              id={`item-${item.listing_id}`}
+              class={`flex gap-4 rounded-xl border p-4 ${item.unavailable ? "border-red-200 bg-red-50" : "border-gray-200"}`}
+              data-listing-id={item.listing_id}
+              data-unavailable={item.unavailable ? "true" : "false"}
+            >
+              {item.listing?.image_url && (
+                <img
+                  src={item.listing.image_url}
+                  alt={item.listing?.name ?? "Producto"}
+                  class="h-20 w-20 rounded-lg object-contain border border-gray-100 flex-shrink-0"
+                  loading="lazy"
+                />
+              )}
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 truncate">
+                  {item.listing?.name ?? `Producto #${item.listing_id}`}
+                </p>
+                <p class="text-sm text-gray-500">{item.listing?.store?.name}</p>
+                {item.unavailable ? (
+                  <span class="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    No disponible
+                  </span>
+                ) : (
+                  <p class="mt-1 text-sm font-semibold text-gray-900">
+                    {item.listing?.price_cop
+                      ? `$${item.listing.price_cop.toLocaleString("es-CO")} COP`
+                      : "—"}
+                  </p>
+                )}
+              </div>
+              <div class="flex flex-col items-end gap-2">
+                {!item.unavailable ? (
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="qty-btn h-7 w-7 rounded border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100"
+                      data-listing-id={item.listing_id}
+                      data-delta="-1"
+                    >
+                      −
+                    </button>
+                    <span class="qty-display w-6 text-center text-sm font-medium">
+                      {item.quantity}
+                    </span>
+                    <button
+                      class="qty-btn h-7 w-7 rounded border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100"
+                      data-listing-id={item.listing_id}
+                      data-delta="1"
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  class="remove-btn text-xs text-red-500 hover:underline"
+                  data-listing-id={item.listing_id}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      <!-- Cart summary -->
+      <div
+        id="cart-summary"
+        class={`mt-8 rounded-xl border border-gray-200 p-6 ${cartData?.items?.length === 0 ? "hidden" : ""}`}
+      >
+        <div class="flex items-center justify-between text-sm text-gray-600">
+          <span>Subtotal</span>
+          <span id="subtotal-display">
+            {
+              cartData?.items
+                ? `$${cartData.items
+                    .filter((i) => !i.unavailable && i.listing?.price_cop)
+                    .reduce(
+                      (sum, i) => sum + (i.listing?.price_cop ?? 0) * i.quantity,
+                      0
+                    )
+                    .toLocaleString("es-CO")} COP`
+                : "—"
+            }
+          </span>
+        </div>
+        <p class="mt-2 text-xs text-gray-400">
+          El domicilio se calcula en el checkout según tu dirección.
+        </p>
+
+        <!-- Unavailable warning -->
+        <p
+          id="unavailable-warning"
+          class={`mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 ${cartData?.items?.some((i) => i.unavailable) ? "" : "hidden"}`}
+        >
+          Tu carrito tiene productos no disponibles. Elimínalos para continuar.
+        </p>
+
+        <a
+          id="checkout-btn"
+          href="/checkout"
+          class={`mt-4 block w-full rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white shadow transition ${
+            cartData?.items?.some((i) => i.unavailable)
+              ? "pointer-events-none bg-gray-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700"
+          }`}
+          aria-disabled={cartData?.items?.some((i) => i.unavailable) ? "true" : "false"}
+        >
+          Ir al checkout
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ API_URL }}>
+  const token =
+    localStorage.getItem("protou_token") ||
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("protou_token="))
+      ?.split("=")[1];
+
+  const cartContainer = document.getElementById("cart-container");
+  const loadingState = document.getElementById("loading-state");
+  const unauthState = document.getElementById("unauth-state");
+  const cartUI = document.getElementById("cart-ui");
+  const emptyState = document.getElementById("empty-state");
+  const itemsContainer = document.getElementById("items-container");
+  const cartSummary = document.getElementById("cart-summary");
+  const unavailableWarning = document.getElementById("unavailable-warning");
+  const checkoutBtn = document.getElementById("checkout-btn");
+  const subtotalDisplay = document.getElementById("subtotal-display");
+
+  function formatCOP(v) {
+    return "$" + v.toLocaleString("es-CO") + " COP";
+  }
+
+  function rebuildItem(item) {
+    const el = document.getElementById(`item-${item.listing_id}`);
+    if (!el) return;
+    const qtyDisplay = el.querySelector(".qty-display");
+    if (qtyDisplay) qtyDisplay.textContent = item.quantity;
+  }
+
+  function updateSubtotal(items) {
+    const sub = items
+      .filter((i) => !i.unavailable && i.listing?.price_cop)
+      .reduce((s, i) => s + i.listing.price_cop * i.quantity, 0);
+    if (subtotalDisplay) subtotalDisplay.textContent = formatCOP(sub);
+
+    const hasUnavailable = items.some((i) => i.unavailable);
+    if (unavailableWarning) {
+      unavailableWarning.classList.toggle("hidden", !hasUnavailable);
+    }
+    if (checkoutBtn) {
+      if (hasUnavailable) {
+        checkoutBtn.classList.add("pointer-events-none", "bg-gray-400", "cursor-not-allowed");
+        checkoutBtn.classList.remove("bg-indigo-600", "hover:bg-indigo-700");
+        checkoutBtn.setAttribute("aria-disabled", "true");
+      } else {
+        checkoutBtn.classList.remove("pointer-events-none", "bg-gray-400", "cursor-not-allowed");
+        checkoutBtn.classList.add("bg-indigo-600", "hover:bg-indigo-700");
+        checkoutBtn.removeAttribute("aria-disabled");
+      }
+    }
+  }
+
+  async function loadCart() {
+    if (!token) {
+      loadingState?.classList.add("hidden");
+      unauthState?.classList.remove("hidden");
+      cartUI?.classList.add("hidden");
+      return;
+    }
+
+    // Save token to cookie for SSR on next visit
+    document.cookie = `protou_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+
+    try {
+      const res = await fetch(`${API_URL}/v1/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        localStorage.removeItem("protou_token");
+        window.location.href = "/login?redirect=/cart";
+        return;
+      }
+
+      const data = await res.json();
+      const items = data.items ?? [];
+
+      loadingState?.classList.add("hidden");
+      cartUI?.classList.remove("hidden");
+
+      if (items.length === 0) {
+        emptyState?.classList.remove("hidden");
+        cartSummary?.classList.add("hidden");
+        return;
+      }
+
+      emptyState?.classList.add("hidden");
+      cartSummary?.classList.remove("hidden");
+
+      // Re-render items if not already rendered server-side
+      if (!itemsContainer?.children.length) {
+        items.forEach((item) => {
+          const div = createItemEl(item);
+          itemsContainer?.appendChild(div);
+        });
+      }
+
+      updateSubtotal(items);
+    } catch {
+      loadingState?.classList.add("hidden");
+    }
+  }
+
+  function createItemEl(item) {
+    const div = document.createElement("div");
+    div.id = `item-${item.listing_id}`;
+    div.dataset.listingId = item.listing_id;
+    div.dataset.unavailable = item.unavailable ? "true" : "false";
+    div.className = `flex gap-4 rounded-xl border p-4 ${item.unavailable ? "border-red-200 bg-red-50" : "border-gray-200"}`;
+
+    const priceStr = item.listing?.price_cop
+      ? formatCOP(item.listing.price_cop)
+      : "—";
+
+    div.innerHTML = `
+      ${item.listing?.image_url ? `<img src="${item.listing.image_url}" alt="${item.listing?.name ?? ""}" class="h-20 w-20 rounded-lg object-contain border border-gray-100 flex-shrink-0" loading="lazy" />` : ""}
+      <div class="flex-1 min-w-0">
+        <p class="font-medium text-gray-900 truncate">${item.listing?.name ?? `Producto #${item.listing_id}`}</p>
+        <p class="text-sm text-gray-500">${item.listing?.store?.name ?? ""}</p>
+        ${item.unavailable
+          ? `<span class="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">No disponible</span>`
+          : `<p class="mt-1 text-sm font-semibold text-gray-900">${priceStr}</p>`}
+      </div>
+      <div class="flex flex-col items-end gap-2">
+        ${!item.unavailable ? `
+          <div class="flex items-center gap-2">
+            <button class="qty-btn h-7 w-7 rounded border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100" data-listing-id="${item.listing_id}" data-delta="-1">−</button>
+            <span class="qty-display w-6 text-center text-sm font-medium">${item.quantity}</span>
+            <button class="qty-btn h-7 w-7 rounded border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100" data-listing-id="${item.listing_id}" data-delta="1">+</button>
+          </div>
+        ` : ""}
+        <button class="remove-btn text-xs text-red-500 hover:underline" data-listing-id="${item.listing_id}">Eliminar</button>
+      </div>
+    `;
+    return div;
+  }
+
+  // Event delegation for qty/remove buttons
+  itemsContainer?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const listingId = parseInt(btn.dataset.listingId, 10);
+    if (!listingId) return;
+
+    if (btn.classList.contains("qty-btn")) {
+      const delta = parseInt(btn.dataset.delta, 10);
+      const qtyDisplay = document.getElementById(`item-${listingId}`)?.querySelector(".qty-display");
+      const currentQty = parseInt(qtyDisplay?.textContent ?? "1", 10);
+      const newQty = Math.max(1, currentQty + delta);
+      if (newQty === currentQty) return;
+
+      if (qtyDisplay) qtyDisplay.textContent = newQty;
+
+      await fetch(`${API_URL}/v1/cart/items/${listingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ quantity: newQty }),
+      });
+
+      // Reload to get updated totals
+      location.reload();
+    }
+
+    if (btn.classList.contains("remove-btn")) {
+      document.getElementById(`item-${listingId}`)?.remove();
+
+      await fetch(`${API_URL}/v1/cart/items/${listingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ quantity: 0 }),
+      });
+
+      // Check if now empty
+      if (!itemsContainer?.children.length) {
+        emptyState?.classList.remove("hidden");
+        cartSummary?.classList.add("hidden");
+      }
+
+      location.reload();
+    }
+  });
+
+  // Load cart if not already loaded server-side
+  loadCart();
+</script>

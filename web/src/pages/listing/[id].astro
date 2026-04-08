@@ -1,0 +1,183 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getListing } from "@/lib/api";
+import type { Listing } from "@/lib/api";
+
+const { id } = Astro.params;
+if (!id || isNaN(Number(id))) {
+  return Astro.redirect("/search");
+}
+
+let listing: Listing | null = null;
+let notFound = false;
+
+try {
+  const res = await getListing(Number(id));
+  listing = res.listing;
+} catch (err: unknown) {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg.includes("NOT_FOUND") || msg.includes("404")) {
+    notFound = true;
+  } else {
+    // unexpected error — still show 404-style to the user
+    notFound = true;
+  }
+}
+
+if (notFound) {
+  return new Response(null, { status: 404 });
+}
+
+function timeSince(isoDate: string | null): string {
+  if (!isoDate) return "hace un tiempo";
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours < 1) return "hace menos de 1 hora";
+  if (hours === 1) return "hace 1 hora";
+  if (hours < 24) return `hace ${hours} horas`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "hace 1 día";
+  return `hace ${days} días`;
+}
+
+function isStale(isoDate: string | null): boolean {
+  if (!isoDate) return false;
+  return Date.now() - new Date(isoDate).getTime() > 24 * 3_600_000;
+}
+
+const l = listing!;
+const stale = isStale(l.last_scraped_at);
+const outOfStock = l.stock_signal === "out_of_stock";
+---
+
+<Layout title={l.name}>
+  <nav class="mb-6 text-sm text-gray-500" aria-label="Breadcrumb">
+    <ol class="flex flex-wrap items-center gap-1">
+      <li>
+        <a href="/" class="hover:text-indigo-600">Inicio</a>
+      </li>
+      <li aria-hidden="true">/</li>
+      {
+        l.category && (
+          <>
+            <li>
+              <a
+                href={`/categories/${l.category.slug}`}
+                class="hover:text-indigo-600"
+              >
+                {l.category.name}
+              </a>
+            </li>
+            <li aria-hidden="true">/</li>
+          </>
+        )
+      }
+      <li class="text-gray-900 font-medium truncate max-w-xs">{l.name}</li>
+    </ol>
+  </nav>
+
+  <div class="grid gap-8 md:grid-cols-2">
+    <!-- Image -->
+    <div
+      class="flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-8"
+    >
+      {
+        l.image_url ? (
+          <img
+            src={l.image_url}
+            alt={l.name}
+            class="max-h-72 w-full object-contain"
+          />
+        ) : (
+          <div class="flex flex-col items-center gap-2 text-gray-300">
+            <span class="text-7xl">&#9881;</span>
+            <span class="text-sm">Sin imagen</span>
+          </div>
+        )
+      }
+    </div>
+
+    <!-- Details -->
+    <div class="flex flex-col gap-4">
+      <div>
+        <p class="text-sm font-medium uppercase tracking-wide text-indigo-600">
+          {l.store.name}
+        </p>
+        <h1 class="mt-1 text-2xl font-bold text-gray-900">{l.name}</h1>
+      </div>
+
+      <!-- Price -->
+      {
+        l.price_cop !== null ? (
+          <p class="text-3xl font-bold text-gray-900">
+            ${l.price_cop.toLocaleString("es-CO")}
+            <span class="ml-1 text-base font-normal text-gray-500">COP</span>
+          </p>
+        ) : (
+          <p class="text-gray-400">Precio no disponible</p>
+        )
+      }
+
+      <!-- Stock badge -->
+      <div class="flex items-center gap-2">
+        {
+          l.stock_signal === "in_stock" && (
+            <span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+              Disponible
+            </span>
+          )
+        }
+        {
+          l.stock_signal === "out_of_stock" && (
+            <span class="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700">
+              Agotado
+            </span>
+          )
+        }
+        {
+          l.stock_signal === "unknown" && (
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-500">
+              Stock desconocido
+            </span>
+          )
+        }
+      </div>
+
+      <!-- Last updated -->
+      <p class={`text-sm ${stale ? "text-amber-600" : "text-gray-400"}`}>
+        {stale && <span class="font-medium">&#9888; </span>}
+        Precio actualizado {timeSince(l.last_scraped_at)}
+        {stale && " — puede estar desactualizado"}
+      </p>
+
+      <!-- Description -->
+      {
+        l.description && (
+          <p class="text-sm text-gray-600 leading-relaxed">{l.description}</p>
+        )
+      }
+
+      <!-- Actions -->
+      <div class="flex flex-col gap-3 pt-2">
+        <button
+          disabled={outOfStock}
+          class={`w-full rounded-lg px-6 py-3 text-sm font-semibold shadow transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            outOfStock
+              ? "cursor-not-allowed bg-gray-200 text-gray-400"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+          }`}
+        >
+          {outOfStock ? "No disponible" : "Agregar al carrito"}
+        </button>
+        <a
+          href={l.product_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-full rounded-lg border border-gray-300 px-6 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+        >
+          Ver en tienda &#8599;
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>

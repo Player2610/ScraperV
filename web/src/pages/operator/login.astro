@@ -1,0 +1,111 @@
+---
+// Operator login page — SSG, no auth required.
+const API_URL =
+  (import.meta.env.PUBLIC_API_URL as string | undefined) ??
+  "http://localhost:8080";
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operador — Protou</title>
+  </head>
+  <body class="min-h-screen bg-gray-100 flex items-center justify-center">
+    <div class="w-full max-w-sm bg-white rounded-xl shadow-md p-8">
+      <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Panel de Operador</h1>
+
+      <form id="login-form" class="space-y-4" novalidate>
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">Correo electrónico</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+
+        <p id="form-error" class="hidden rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+
+        <button
+          type="submit"
+          id="submit-btn"
+          class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
+        >
+          Ingresar
+        </button>
+      </form>
+    </div>
+  </body>
+</html>
+
+<script define:vars={{ API_URL }}>
+  const form = document.getElementById("login-form");
+  const submitBtn = document.getElementById("submit-btn");
+  const formError = document.getElementById("form-error");
+
+  function showError(msg) {
+    formError.textContent = msg;
+    formError.classList.remove("hidden");
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.classList.add("hidden");
+
+    const email = form.email.value.trim();
+    const password = form.password.value;
+
+    if (!email || !password) {
+      showError("Ingresa tu correo y contraseña.");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Ingresando...";
+
+    try {
+      const res = await fetch(`${API_URL}/v1/operator/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          showError("Credenciales inválidas.");
+        } else {
+          showError(data.error ?? "Error al iniciar sesión.");
+        }
+        return;
+      }
+
+      // Session cookie is set by the server — redirect to operator panel
+      window.location.href = "/operator";
+    } catch (err) {
+      showError("Error de red. Intenta de nuevo.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Ingresar";
+    }
+  });
+</script>
