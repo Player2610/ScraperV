@@ -65,27 +65,29 @@ Al hacer `make dev`, el servicio `db-sync` corre `pg_dump` contra Neon y restaur
 
 ---
 
-## 1. Neon (Base de datos — Dev/Staging)
+## 1. Neon (Base de datos — Producción)
 
-Neon es el PostgreSQL serverless gratuito para desarrollo y staging. Cloud SQL se usa solo en producción.
+Neon es el PostgreSQL serverless que actúa como **base de producción**. En desarrollo se usa una DB local en Docker que se sincroniza desde Neon al arrancar (solo lectura desde dev — los datos nunca fluyen de vuelta).
 
 ### Requisitos
 - Cuenta en [neon.tech](https://neon.tech) (free tier suficiente)
 
 ### Pasos
 1. Crear un proyecto llamado `protou`
-2. Crear dos bases de datos:
-   - `protou_dev` — desarrollo local
-   - `protou_staging` — staging / QA
-3. Habilitar la extensión pgvector (viene incluida en Neon — solo verificar):
+2. Crear una base de datos `neondb` (la que crea Neon por defecto sirve)
+3. Verificar que la extensión `vector` esté disponible:
    ```sql
    SELECT * FROM pg_available_extensions WHERE name = 'vector';
    ```
-4. Copiar el connection string y guardarlo en `.env`:
+4. Copiar el connection string y guardarlo en `.env` como `DATABASE_URL` (producción):
    ```
-   DATABASE_URL=postgresql://user:pass@host/protou_dev?sslmode=require
+   DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
    ```
-5. Verificar que `.env` está en `.gitignore` ✅
+5. Copiar el mismo valor en `.env.dev` como `PROD_DATABASE_URL` (fuente del sync):
+   ```
+   PROD_DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
+   ```
+6. Verificar que `.env` y `.env.dev` están en `.gitignore` ✅
 
 ### Límites del free tier
 | Recurso | Límite |

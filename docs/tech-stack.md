@@ -31,8 +31,8 @@
 | Herramienta | Dev | Prod |
 |-------------|-----|------|
 | Docker Compose | API + DB (pgvector) local | — |
-| Neon | Fuente del sync (PROD_DATABASE_URL, solo lectura) | PostgreSQL serverless |
-| Cloud SQL | — | PostgreSQL 16 + pgvector (~$9/mes) |
+| Neon | Solo lectura vía `PROD_DATABASE_URL` (fuente del sync) | PostgreSQL serverless — base de producción |
+| Cloud SQL | — | Alternativa futura si Neon deja de ser suficiente |
 | GCP Cloud Run | — | API |
 | GCP Cloud Run Job | — | Scraper nightly |
 | GCP Cloud Scheduler | — | Trigger cron del scraper |

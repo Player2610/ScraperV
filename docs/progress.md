@@ -7,7 +7,7 @@
 | Fase | Estado | Tests |
 |------|--------|-------|
 | 0 — Fundación | ✅ Completa (código) / ⏳ Setup externo | `go build ./...` OK |
-| 1 — Scraper | ✅ Completa (código) / ⏳ Deploy | 29 tests pasando |
+| 1 — Scraper | ✅ Completa (código) / ⏳ Deploy | 19 tests (22 subtests) pasando |
 | 2 — Catálogo + Frontend | ✅ Completa | `go build ./...` OK |
 | 3 — Usuarios + Carrito + Checkout | ✅ Completa | `go build ./...` OK |
 | 4 — Panel del Operador | ✅ Completa | `go build ./...` OK |
@@ -77,7 +77,8 @@ make dev-reset   # borra el volumen y sincroniza desde cero
   - Sigmaelectrónica (5 tests — strip IVA, "Agotado")
   - Electronilab (4 tests)
   - Vistronica (4 tests — "Consultar precio")
-- [x] Tests unitarios: `parser_test.go` (22 casos), `sku_test.go` (4 casos)
+- [x] Tests unitarios: `parser_test.go` (2 funciones / 22 subtests), `sku_test.go` (4 funciones)
+- [x] Tests de stores: sigma (5), electronilab (4), vistronica (4) — total 19 funciones / 22 subtests
 - [x] Tests de integración: `integration_test.go` (build tag: `integration`)
 - [x] `cmd/scraper/main.go` — flags `--dry-run`, `--store`, signal handling
 
