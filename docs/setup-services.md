@@ -38,8 +38,7 @@ Checklist de lo que hay que configurar en Neon, GCP y Cloudflare antes de poder 
 
 ```bash
 # Variables de entorno
-cp .env.example .env           # credenciales de producción (Neon, Resend, JWT)
-cp .env.dev.example .env.dev   # overrides dev — completar PROD_DATABASE_URL con el valor de DATABASE_URL de .env
+cp .env.example .env           # completar DATABASE_URL (Docker), PROD_DATABASE_URL (Neon), JWT_SECRET, RESEND_API_KEY
 cp web/.env.example web/.env   # PUBLIC_API_URL=http://localhost:8080
 
 # Stack de backend (sincroniza DB desde Neon automáticamente)
@@ -56,7 +55,7 @@ cd web && bun install && bun dev
 | `make dev` | Full start: `db → db-sync → migrate → api` |
 | `make dev-quick` | Reinicia solo el API (útil cuando la DB ya está corriendo) |
 | `make dev-reset` | Borra volumen + sincroniza desde cero |
-| `make migrate-up` | Aplica migraciones pendientes (en host, hacia Neon si no hay `.env.dev`) |
+| `make migrate-up` | Aplica migraciones pendientes (en host, usa `DATABASE_URL` de `.env`) |
 | `make scraper-dry-run` | Parsea listings sin escribir a DB |
 
 ### Flujo de sincronización DB
@@ -79,15 +78,11 @@ Neon es el PostgreSQL serverless que actúa como **base de producción**. En des
    ```sql
    SELECT * FROM pg_available_extensions WHERE name = 'vector';
    ```
-4. Copiar el connection string y guardarlo en `.env` como `DATABASE_URL` (producción):
-   ```
-   DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
-   ```
-5. Copiar el mismo valor en `.env.dev` como `PROD_DATABASE_URL` (fuente del sync):
+4. Copiar el connection string y guardarlo en `.env` como `PROD_DATABASE_URL` (fuente del sync):
    ```
    PROD_DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
    ```
-6. Verificar que `.env` y `.env.dev` están en `.gitignore` ✅
+5. Verificar que `.env` está en `.gitignore` ✅
 
 ### Límites del free tier
 | Recurso | Límite |
@@ -290,7 +285,7 @@ Secrets que hay que agregar en GitHub → Settings → Secrets → Actions:
 - [x] Cuenta Neon creada, proyecto `protou`, `DATABASE_URL` en `.env`
 - [x] Migraciones aplicadas en Neon (versión 13)
 - [x] Scraper corriendo — 219 listings de Sigmaelectrónica ingresados
-- [x] `.env.dev` configurado con `PROD_DATABASE_URL` apuntando a Neon
+- [x] `.env` configurado con `DATABASE_URL` (Docker local) y `PROD_DATABASE_URL` (Neon)
 - [x] `make dev` funciona: `db → db-sync → migrate → api` en Docker
 - [x] `make dev-quick` y `make dev-reset` disponibles
 - [x] `cd web && bun install && bun dev` corre sin errores (`:4321`)

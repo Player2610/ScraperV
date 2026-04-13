@@ -133,11 +133,15 @@ Deploy automático en push a `main`. Preview automático en PRs.
 Variables requeridas (documentadas en `.env.example`):
 
 ```
-DATABASE_URL=
+DATABASE_URL=postgres://postgres:password@localhost:5432/protou?sslmode=disable
+PROD_DATABASE_URL=postgresql://<user>:<pass>@<host>/<db>?sslmode=require
 JWT_SECRET=
 RESEND_API_KEY=
 GOOGLE_MAPS_API_KEY=
 PORT=8080
+CORS_ORIGIN=http://localhost:4321
+NOTIFICATIONS_FROM=protou DEV <pedidos+dev@protou.co>
+ALERT_EMAIL=
 ```
 
 ---

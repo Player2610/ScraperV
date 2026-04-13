@@ -30,7 +30,7 @@
 - [x] `docs/gcp-cicd-setup.md` — setup paso a paso: WIF + Artifact Registry + GitHub secrets
 - [x] `Makefile` — `dev`, `dev-quick`, `dev-reset`, `build`, `test`, `lint`, `migrate-up/down`, `scraper-dry-run`
 - [x] Astro scaffold en `web/` — SSR + Cloudflare adapter + Tailwind + `api.ts`
-- [x] `.golangci.yml`, `.gitignore`, `.env.example`, `.env.dev.example`, `web/.env.example`
+- [x] `.golangci.yml`, `.gitignore`, `.env.example`, `web/.env.example`
 - [x] `web/tailwind.config.js` — config explícita para que el plugin escanee `src/**/*.{astro,...}`
 - [x] `docker-compose.yml` reescrito — `db` → `db-sync` (pg_dump prod→dev) → `migrate` → `api`
 
@@ -43,8 +43,7 @@
 
 ```bash
 # 1. Variables de entorno
-cp .env.example .env           # credenciales de producción (Neon, Resend, etc.)
-cp .env.dev.example .env.dev   # overrides dev — llenar PROD_DATABASE_URL con el valor de DATABASE_URL de .env
+cp .env.example .env           # completar DATABASE_URL (Docker), PROD_DATABASE_URL (Neon), JWT_SECRET, RESEND_API_KEY
 cp web/.env.example web/.env   # PUBLIC_API_URL del frontend
 
 # 2. Stack completo (DB → sync desde Neon → migrate → API)

@@ -29,15 +29,11 @@ Plataforma intermediaria (dropshipping) de componentes electrónicos para estudi
 ### 1. Variables de entorno
 
 ```bash
-# .env — credenciales de producción (Neon, Resend, etc.)
 cp .env.example .env
-
-# .env.dev — overrides para dev local (DB local, CORS local, sender de emails)
-cp .env.dev.example .env.dev
-# Edita .env.dev y completa PROD_DATABASE_URL con el valor de DATABASE_URL de .env
+# Edita .env y completa DATABASE_URL (Docker local), PROD_DATABASE_URL (Neon), JWT_SECRET, RESEND_API_KEY
 ```
 
-Variables de `.env.dev`:
+Variables de `.env`:
 
 | Variable | Requerida | Descripción |
 |----------|-----------|-------------|
@@ -48,6 +44,7 @@ Variables de `.env.dev`:
 | `GOOGLE_MAPS_API_KEY` | No | Geocodificación (opcional — degrada sin él) |
 | `NOTIFICATIONS_FROM` | No | Remitente de emails (default: `protou DEV <pedidos+dev@protou.co>`) |
 | `CORS_ORIGIN` | No | Default: `http://localhost:4321` |
+| `ALERT_EMAIL` | No | Email para alertas del scraper (dejar en blanco para desactivar) |
 
 ```bash
 # web/.env — URL del API para el frontend en dev
@@ -113,7 +110,7 @@ Abre `http://localhost:4321` en el browser.
 ### 5. Migraciones
 
 ```bash
-make migrate-up    # aplica migraciones pendientes (usa DATABASE_URL de .env.dev si existe)
+make migrate-up    # aplica migraciones pendientes (usa DATABASE_URL de .env)
 make migrate-down  # revierte la última migración
 ```
 
