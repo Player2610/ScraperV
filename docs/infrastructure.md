@@ -128,21 +128,29 @@ Deploy automático en push a `main`. Preview automático en PRs.
 
 `docker-compose.yml` levanta:
 - `db`: postgres:16 con extensión pgvector (puerto 5432)
-- `api`: target `api`, depende de `db`
+- `db-sync`: vuelca prod → local (corre una vez al arrancar)
+- `api`: target `api`, depende de `db-sync`
 
-Variables requeridas (documentadas en `.env.example`):
+Un único `.env` cubre dev y prod. Estructura (ver `.env.example`):
 
 ```
+# ─── Development ───────────────────────────────────────────────────────────────
 DATABASE_URL=postgres://postgres:password@localhost:5432/protou?sslmode=disable
-PROD_DATABASE_URL=postgresql://<user>:<pass>@<host>/<db>?sslmode=require
-JWT_SECRET=
-RESEND_API_KEY=
-GOOGLE_MAPS_API_KEY=
 PORT=8080
 CORS_ORIGIN=http://localhost:4321
 NOTIFICATIONS_FROM=protou DEV <pedidos+dev@protou.co>
 ALERT_EMAIL=
+
+# ─── Auth ──────────────────────────────────────────────────────────────────────
+JWT_SECRET=<openssl rand -hex 32>
+
+# ─── Production credentials ────────────────────────────────────────────────────
+PROD_DATABASE_URL=postgresql://<user>:<pass>@<host>/<db>?sslmode=require
+RESEND_API_KEY=re_...
+GOOGLE_MAPS_API_KEY=
 ```
+
+`docker-compose.yml` usa `env_file: .env` para `db-sync` y `api`, y sobreescribe `DATABASE_URL` al hostname interno del contenedor.
 
 ---
 

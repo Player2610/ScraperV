@@ -38,7 +38,7 @@ Checklist de lo que hay que configurar en Neon, GCP y Cloudflare antes de poder 
 
 ```bash
 # Variables de entorno
-cp .env.example .env           # completar DATABASE_URL (Docker), PROD_DATABASE_URL (Neon), JWT_SECRET, RESEND_API_KEY
+cp .env.example .env           # completar JWT_SECRET, PROD_DATABASE_URL (Neon), RESEND_API_KEY — el resto tiene defaults listos
 cp web/.env.example web/.env   # PUBLIC_API_URL=http://localhost:8080
 
 # Stack de backend (sincroniza DB desde Neon automáticamente)

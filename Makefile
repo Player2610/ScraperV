@@ -1,5 +1,4 @@
 -include .env
--include .env.dev   # overrides .env when present — points DATABASE_URL to local container
 export
 
 .PHONY: help dev dev-quick dev-reset build test test-integration lint migrate-up migrate-down scraper-dry-run generate
