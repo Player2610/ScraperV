@@ -1,0 +1,38 @@
+name: Scraper (nightly)
+
+# Reemplaza al Cloud Run Job + Cloud Scheduler del plan original (GCP).
+# Corre el scraper contra Neon todas las noches y permite disparo manual.
+on:
+  schedule:
+    # 07:00 UTC = 02:00 COT (UTC-5)
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      store:
+        description: "ID de tienda (0 = todas)"
+        required: false
+        default: "0"
+
+concurrency:
+  group: scraper
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    name: Run scraper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Run scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          NOTIFICATIONS_FROM: ${{ secrets.NOTIFICATIONS_FROM }}
+        run: go run ./cmd/scraper --store ${{ github.event.inputs.store || '0' }}

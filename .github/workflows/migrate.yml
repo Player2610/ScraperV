@@ -1,0 +1,32 @@
+name: DB migrations
+
+# Aplica migraciones pendientes a Neon cuando cambia el schema, o manualmente.
+# Sustituye al Cloud Run Job `migrate` del plan GCP original.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "db/migrations/**"
+      - "cmd/migrate/**"
+  workflow_dispatch:
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Run migrations against Neon
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: go run ./cmd/migrate
