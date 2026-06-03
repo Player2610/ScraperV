@@ -10,10 +10,10 @@ type LatLng struct {
 
 // FeeBracket mirrors a row from the delivery_fee_brackets table.
 type FeeBracket struct {
-	ID             int64    `json:"id"`
-	DistanceKmMin  float64  `json:"distance_km_min"`
-	DistanceKmMax  *float64 `json:"distance_km_max"`
-	FeeCOP         int      `json:"fee_cop"`
+	ID            int64    `json:"id"`
+	DistanceKmMin float64  `json:"distance_km_min"`
+	DistanceKmMax *float64 `json:"distance_km_max"`
+	FeeCOP        int      `json:"fee_cop"`
 }
 
 // DeliveryConfig mirrors the single row in delivery_config.

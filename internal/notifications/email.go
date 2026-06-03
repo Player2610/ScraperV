@@ -147,9 +147,9 @@ func (s *Service) logNotification(orderID int64, userID int64, event, status, er
 // renderOrderCreated renders the HTML email for order_created.
 func (s *Service) renderOrderCreated(userName string, order Order, items []OrderItem) (string, error) {
 	paymentLabels := map[string]string{
-		"nequi":       "Nequi",
-		"daviplata":   "Daviplata",
-		"efectivo":    "Efectivo",
+		"nequi":        "Nequi",
+		"daviplata":    "Daviplata",
+		"efectivo":     "Efectivo",
 		"llaves_breve": "Llaves Breve",
 	}
 	label, ok := paymentLabels[order.PaymentMethod]

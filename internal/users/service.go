@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/protou/protou/internal/auth"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/protou/protou/internal/auth"
 )
 
 // ErrDuplicateEmail is returned when a registration email already exists.

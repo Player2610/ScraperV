@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+
 	"github.com/protou/protou/internal/scraping"
 )
 

@@ -12,8 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
-	"github.com/protou/protou/internal/auth"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/protou/protou/internal/auth"
 )
 
 // ctxKey is a private context key type for this package.

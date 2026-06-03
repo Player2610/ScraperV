@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/protou/protou/internal/notifications"
 )
 

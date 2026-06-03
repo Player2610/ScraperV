@@ -1,0 +1,39 @@
+# Render Blueprint — despliegue del API de protou
+# Doc: https://render.com/docs/blueprint-spec
+#
+# El API (cmd/api) corre como Web Service con runtime Go nativo (sin Docker),
+# para evitar el Dockerfile multi-target cuya última etapa es `migrate`.
+# Render inyecta PORT automáticamente; el API lo lee vía internal/platform/config.go.
+#
+# Las variables con `sync: false` se completan en el dashboard de Render
+# (son secretos: NO se versionan en el repo).
+services:
+  - type: web
+    name: protou-api
+    runtime: go
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: go build -trimpath -ldflags="-s -w" -o api ./cmd/api
+    startCommand: ./api
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Neon connection string (postgresql://...?sslmode=require)
+      - key: DATABASE_URL
+        sync: false
+      # openssl rand -hex 32  (mínimo 32 caracteres)
+      - key: JWT_SECRET
+        sync: false
+      # Resend API key (re_...)
+      - key: RESEND_API_KEY
+        sync: false
+      # Opcional — geocodificación; el sistema degrada sin él
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      # Dominio del frontend en Cloudflare Pages — ajustar tras crear Pages
+      - key: CORS_ORIGIN
+        value: https://protou.pages.dev
+      # Remitente de emails en producción
+      - key: NOTIFICATIONS_FROM
+        value: protou <pedidos@protou.co>

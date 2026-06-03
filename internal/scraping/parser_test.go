@@ -13,7 +13,7 @@ func TestParsePrice(t *testing.T) {
 		ok       bool
 	}{
 		{"$ 200", 200, true},
-		{"$\u00a0200", 200, true},        // non-breaking space
+		{"$\u00a0200", 200, true}, // non-breaking space
 		{"$ 1.200", 1200, true},
 		{"$ 12.500", 12500, true},
 		{"$ 35.000", 35000, true},
@@ -27,7 +27,7 @@ func TestParsePrice(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
+
 		t.Run(tc.input, func(t *testing.T) {
 			got, ok := ParsePrice(tc.input)
 			assert.Equal(t, tc.ok, ok, "ok mismatch for %q", tc.input)
@@ -57,7 +57,7 @@ func TestParseStockSignal(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
+
 		t.Run(tc.priceRaw+"/"+tc.stockRaw, func(t *testing.T) {
 			got := ParseStockSignal(tc.priceRaw, tc.stockRaw)
 			assert.Equal(t, tc.expected, got)

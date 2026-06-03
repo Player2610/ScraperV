@@ -12,9 +12,10 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-chi/chi/v5"
-	"github.com/protou/protou/internal/users"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/protou/protou/internal/users"
 )
 
 // newTestRouter builds a chi router with only the register endpoint, backed by
@@ -46,9 +47,9 @@ func newTestRouter(t *testing.T) (*chi.Mux, sqlmock.Sqlmock) {
 // /v1/auth/register without requiring a real database.
 func TestRegisterValidation(t *testing.T) {
 	cases := []struct {
-		name           string
-		body           map[string]string
-		wantStatus     int
+		name             string
+		body             map[string]string
+		wantStatus       int
 		wantBodyContains string
 	}{
 		{

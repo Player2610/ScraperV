@@ -12,10 +12,11 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/protou/protou/internal/auth"
-	"github.com/protou/protou/internal/cart"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/protou/protou/internal/auth"
+	"github.com/protou/protou/internal/cart"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -117,9 +118,9 @@ func TestUpsertItem_QuantityValidation(t *testing.T) {
 		{"qty zero", 0, http.StatusBadRequest, "INVALID_QUANTITY"},
 		{"qty negative", -1, http.StatusBadRequest, "INVALID_QUANTITY"},
 		{"qty 100 (over max)", 100, http.StatusBadRequest, "INVALID_QUANTITY"},
-		{"qty 99 (max valid — reaches service)", 99, -1, ""},   // passes validation
-		{"qty 1 (min valid — reaches service)", 1, -1, ""},     // passes validation
-		{"qty 50 (mid range — reaches service)", 50, -1, ""},   // passes validation
+		{"qty 99 (max valid — reaches service)", 99, -1, ""}, // passes validation
+		{"qty 1 (min valid — reaches service)", 1, -1, ""},   // passes validation
+		{"qty 50 (mid range — reaches service)", 50, -1, ""}, // passes validation
 	}
 
 	for _, tc := range cases {

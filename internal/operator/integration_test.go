@@ -163,13 +163,13 @@ func TestOperatorE2E(t *testing.T) {
 	orderID := createTestOrder(t, db, studentID)
 
 	t.Cleanup(func() {
-		db.ExecContext(context.Background(), `DELETE FROM payment_records WHERE order_id = $1`, orderID)       //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM order_events WHERE order_id = $1`, orderID)         //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM orders WHERE id = $1`, orderID)                     //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, studentID)                    //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM operators WHERE user_id = $1`, opUserID)            //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM payment_records WHERE order_id = $1`, orderID)                                                   //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM order_events WHERE order_id = $1`, orderID)                                                      //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM orders WHERE id = $1`, orderID)                                                                  //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, studentID)                                                                 //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM operators WHERE user_id = $1`, opUserID)                                                         //nolint:errcheck
 		db.ExecContext(context.Background(), `DELETE FROM operator_sessions WHERE operator_id IN (SELECT id FROM operators WHERE user_id = $1)`, opUserID) //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, opUserID)                     //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, opUserID)                                                                  //nolint:errcheck
 	})
 
 	// ── 1. Operator login ──────────────────────────────────────────────────────

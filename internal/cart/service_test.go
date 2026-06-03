@@ -5,8 +5,9 @@ package cart
 import (
 	"testing"
 
-	"github.com/protou/protou/internal/catalog"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/protou/protou/internal/catalog"
 )
 
 // ─── ErrUnavailable sentinel ─────────────────────────────────────────────────

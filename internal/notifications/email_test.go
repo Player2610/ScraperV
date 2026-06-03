@@ -18,8 +18,9 @@ import (
 // that points to the provided test server URL.
 func newTestService(serverURL string) *Service {
 	svc := &Service{
-		db:   nil, // logNotification checks for nil and returns early
-		tmpl: loadTemplate(),
+		db:     nil,        // logNotification checks for nil and returns early
+		apiKey: "test-key", // non-empty so send path executes (tests use a fake Resend server)
+		tmpl:   loadTemplate(),
 		httpClient: &http.Client{
 			Transport: &redirectTransport{baseURL: serverURL},
 		},
@@ -46,11 +47,11 @@ func TestRenderOrderCreated_ContainsOrderID(t *testing.T) {
 	svc := &Service{tmpl: loadTemplate()}
 
 	order := Order{
-		ID:            1234,
-		SubtotalCOP:   45000,
+		ID:             1234,
+		SubtotalCOP:    45000,
 		DeliveryFeeCOP: 5000,
-		TotalCOP:      50000,
-		PaymentMethod: "nequi",
+		TotalCOP:       50000,
+		PaymentMethod:  "nequi",
 		DeliveryAddressSnapshot: AddressSnapshot{
 			FullAddress: "Calle 45 # 10-20, Bogotá",
 		},
