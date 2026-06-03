@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
+
 	"github.com/protou/protou/internal/auth"
 )
 
@@ -245,13 +246,5 @@ func respondError(w http.ResponseWriter, status int, msg, code string) {
 	respondJSON(w, status, map[string]string{
 		"error": msg,
 		"code":  code,
-	})
-}
-
-func respondValidationError(w http.ResponseWriter, field, message string) {
-	respondJSON(w, http.StatusUnprocessableEntity, map[string]string{
-		"error":   "VALIDATION_ERROR",
-		"field":   field,
-		"message": message,
 	})
 }

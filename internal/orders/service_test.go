@@ -5,9 +5,10 @@ package orders
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/protou/protou/internal/catalog"
 	"github.com/protou/protou/internal/delivery"
-	"github.com/stretchr/testify/assert"
 )
 
 // ─── Error sentinels ──────────────────────────────────────────────────────────
@@ -218,9 +219,9 @@ func TestCreateOrder_SnapshotsCapturePrice(t *testing.T) {
 
 func TestCreateOrder_UnavailableItem_Rejected(t *testing.T) {
 	type testCase struct {
-		name        string
-		stockSignal catalog.StockSignal
-		priceCOP    *int
+		name         string
+		stockSignal  catalog.StockSignal
+		priceCOP     *int
 		expectReject bool
 	}
 

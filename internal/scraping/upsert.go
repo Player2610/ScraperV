@@ -44,7 +44,6 @@ func UpsertListing(
 	// Check existing row first.
 	type existingRow struct {
 		id          int64
-		priceCOP    *int
 		stockSignal string
 	}
 

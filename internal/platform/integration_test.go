@@ -239,13 +239,13 @@ func TestStudentE2E(t *testing.T) {
 
 	// ── cleanup: delete test data so the test is repeatable ───────────────────
 	t.Cleanup(func() {
-		db.ExecContext(context.Background(), `DELETE FROM order_items WHERE order_id = $1`, orderID)      //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM order_events WHERE order_id = $1`, orderID)    //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM orders WHERE id = $1`, orderID)                //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM order_items WHERE order_id = $1`, orderID)                                      //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM order_events WHERE order_id = $1`, orderID)                                     //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM orders WHERE id = $1`, orderID)                                                 //nolint:errcheck
 		db.ExecContext(context.Background(), `DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id = $1)`, userID) //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM carts WHERE user_id = $1`, userID)             //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM addresses WHERE user_id = $1`, userID)         //nolint:errcheck
-		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, userID)                  //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM carts WHERE user_id = $1`, userID)                                              //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM addresses WHERE user_id = $1`, userID)                                          //nolint:errcheck
+		db.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, userID)                                                   //nolint:errcheck
 	})
 }
 

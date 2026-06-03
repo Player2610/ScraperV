@@ -5,10 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/protou/protou/internal/scraping"
-	"github.com/protou/protou/internal/scraping/stores"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/protou/protou/internal/scraping"
+	"github.com/protou/protou/internal/scraping/stores"
 )
 
 func vistronicaRule() scraping.ScrapeRule {

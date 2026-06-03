@@ -48,15 +48,15 @@ type StoreWithRule struct {
 
 // ScrapeJob represents one execution record for scraping a single store.
 type ScrapeJob struct {
-	ID               int64
-	StoreID          int64
-	StartedAt        time.Time
-	FinishedAt       *time.Time
-	Status           string
-	ListingsFound    int
-	ListingsUpdated  int
-	ListingsNew      int
-	ErrorMessage     *string
+	ID              int64
+	StoreID         int64
+	StartedAt       time.Time
+	FinishedAt      *time.Time
+	Status          string
+	ListingsFound   int
+	ListingsUpdated int
+	ListingsNew     int
+	ErrorMessage    *string
 }
 
 // RawListing is the raw parsed data for a single product before DB upsert.

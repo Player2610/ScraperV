@@ -23,10 +23,10 @@ type EmailNotifier struct {
 
 // resendRequest is the JSON body for the Resend emails.send endpoint.
 type resendRequest struct {
-	From    string `json:"from"`
+	From    string   `json:"from"`
 	To      []string `json:"to"`
-	Subject string `json:"subject"`
-	HTML    string `json:"html"`
+	Subject string   `json:"subject"`
+	HTML    string   `json:"html"`
 }
 
 // SendScraperAlert sends an alert email when a scrape job is anomalous or failed.

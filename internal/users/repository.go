@@ -167,7 +167,6 @@ func (r *Repository) AnonymizeUser(ctx context.Context, userID int64) error {
 	return nil
 }
 
-
 func scanAddress(row *sql.Row) (*Address, error) {
 	var a Address
 	var label, reference sql.NullString

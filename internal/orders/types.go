@@ -54,15 +54,15 @@ type Order struct {
 
 // OrderItem mirrors the order_items table.
 type OrderItem struct {
-	ID                    int64     `json:"id"`
-	OrderID               int64     `json:"order_id"`
-	ListingID             *int64    `json:"listing_id"`
-	ListingNameSnapshot   string    `json:"listing_name_snapshot"`
-	ListingStoreSnapshot  string    `json:"listing_store_snapshot"`
-	PriceSnapshotCOP      int       `json:"price_snapshot_cop"`
-	Quantity              int       `json:"quantity"`
-	IsCancelled           bool      `json:"is_cancelled"`
-	CreatedAt             time.Time `json:"created_at"`
+	ID                   int64     `json:"id"`
+	OrderID              int64     `json:"order_id"`
+	ListingID            *int64    `json:"listing_id"`
+	ListingNameSnapshot  string    `json:"listing_name_snapshot"`
+	ListingStoreSnapshot string    `json:"listing_store_snapshot"`
+	PriceSnapshotCOP     int       `json:"price_snapshot_cop"`
+	Quantity             int       `json:"quantity"`
+	IsCancelled          bool      `json:"is_cancelled"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 // NewOrder holds data needed to insert an order.
@@ -78,11 +78,11 @@ type NewOrder struct {
 
 // NewOrderItem holds data needed to insert an order_item.
 type NewOrderItem struct {
-	ListingID             int64
-	ListingNameSnapshot   string
-	ListingStoreSnapshot  string
-	PriceSnapshotCOP      int
-	Quantity              int
+	ListingID            int64
+	ListingNameSnapshot  string
+	ListingStoreSnapshot string
+	PriceSnapshotCOP     int
+	Quantity             int
 }
 
 // CreateOrderRequest is the HTTP request body for POST /v1/orders.

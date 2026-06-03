@@ -315,4 +315,3 @@ func buildOrderItemsList(orderID int64, newItems []NewOrderItem) []OrderItem {
 	}
 	return items
 }
-
